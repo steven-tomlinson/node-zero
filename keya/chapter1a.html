@@ -125,11 +125,23 @@
     .choice {
       border: 1px solid rgba(255, 255, 255, .15);
       background: rgba(255, 255, 255, .03);
+      cursor: pointer;
+      min-height: 48px;
+      font-size: 1rem;
+      transition: background 0.15s, border-color 0.15s;
     }
 
-    .choice:hover {
+    .choice:hover, .choice:focus {
       background: rgba(255, 255, 255, .07);
       border-color: rgba(255, 255, 255, .35);
+      outline: none;
+    }
+
+    @media (max-width: 600px) {
+      .choice {
+        font-size: 1.1rem;
+        padding: 1rem 1.2rem;
+      }
     }
 
     .pill {
@@ -253,7 +265,7 @@
     const SCENES = {
       intro: {
         lines: [
-          '> LOCATION: Las Vegas, 2025.',
+          '> LOCATION: Las Vegas, 3030.',
           '> The Strip flickers like a broken circuit. The Substrate hums beneath.',
           '[INBOUND PACKET DETECTED]',
           'crypttext://node-zero.xyz',
@@ -853,17 +865,17 @@
     // Render choices for a scene
     function renderChoices(scene) {
       elChoices.innerHTML = '';
-      (scene.choices || []).forEach(ch => {
+      (scene.choices || []).forEach((ch, idx) => {
         const btn = document.createElement('button');
         btn.className = 'choice rounded-md px-3 py-2 text-left';
         btn.textContent = ch.label;
-        btn.addEventListener('click', () => {
-          if (ch.intel) unlockIntel(ch.intel);
-          // Log the choice
-          pushSystemLine('YOU CHOSE: ' + ch.label);
-          // Advance
-          runScene(ch.next, { fromChoice: ch });
-        });
+        btn.setAttribute('type', 'button');
+        btn.setAttribute('aria-label', ch.label);
+        btn.onclick = function() {
+          if (typeof ch.next === 'string' && ch.next) {
+            runScene(ch.next, { fromChoice: ch });
+          }
+        };
         elChoices.appendChild(btn);
       });
     }
@@ -902,6 +914,7 @@
 
       // Clear the terminal area before displaying new response
       elLog.innerHTML = '';
+      elChoices.innerHTML = '';
 
       // Type this scene's text, then render choices
       typeBlock(scene.lines, () => { renderChoices(scene); });
