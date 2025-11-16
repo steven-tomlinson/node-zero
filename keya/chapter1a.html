@@ -129,11 +129,15 @@
       min-height: 48px;
       font-size: 1rem;
       transition: background 0.15s, border-color 0.15s;
+      position: relative;
+      z-index: 10;
+      pointer-events: auto;
     }
 
     .choice:hover, .choice:focus {
       background: rgba(255, 255, 255, .07);
       border-color: rgba(255, 255, 255, .35);
+      cursor: pointer;
       outline: none;
     }
 
@@ -224,7 +228,9 @@
       substrate: {
         title: 'The Substrate',
         body: `A decentralized mesh of legacy blockchains, storage nodes, and AI-run services that survived chaotic failures. 
-      It's not "the internet" or "a metaverse"—it's the quiet plumbing beneath both. Packets, DAOs, file shards, and forgotten servers stitched into a living ruin.`
+      It's not "the internet" or "a metaverse"—it's the quiet plumbing beneath both. Packets, DAOs, file shards, and forgotten servers lithificated into a 
+      resilient and ubiquitous digital ecosystem that endures beyond the surface. Even the Bigs don't fully understand it exists within their own infrastructure. 
+      Like a non-malignant un-detected tumor, it just is—always there, always humming, always waiting for interaction to spring it into action.`
       },
       echo: {
         title: 'Echo Cipher',
@@ -233,13 +239,13 @@
       },
       entangle: {
         title: 'Entangled Ledger',
-        body: `A quantum-ledger concept spanning time slices. Messages can be observed across timelines using pre-agreed protocols. 
-      Constraints exist to preserve causality; you can only collapse states left open by the chain's creation.`
+        body: `A quantum-ledger concept spanning time slices. Messages can be observed across timelines as chains using pre-agreed protocols. 
+      Constraints exist to preserve causality; you can only collapse states left open by the chain's creation. Derived from `
       },
       blue: {
-        title: 'The Blue (L1 Shard)',
-        body: `An AI-powered layer on Lamina1's L1 network. Users can spin up ephemeral micro-metaverses funded by temporary DAOs; 
-      spaces dissolve when gas depletes or the shard disconnects.`
+        title: 'The Blue (Linea Shard)',
+        body: `A portal where visitors can spin up ephemeral micro-metaverses funded by temporary DAOs; 
+               the spaces dissolve when gas depletes or all nodes are disconnected. You may mint your pass here`
       },
       stellar: {
         title: 'Stellar Identity (Muxed Keys)',
@@ -247,9 +253,8 @@
       instead of sharing secrets. Good ops practice: short-lived auth + audit trails.`
       },
       lockb0x: {
-        title: 'Lockb0x Storage (IPFS/IPNS + Azure)',
-        body: `Bring-Your-Own-Storage abstraction. Media and metadata live in IPFS/IPNS with governance and access mediated via an API gateway. 
-      Private swarms for sensitive work; public gateways only for whitelisted CIDs.`
+        title: 'Lockb0x Protocol',
+        body: `A draft IETF Standard for proving the creation, existence, and control or custody digital data and assets through Controllable electronic Records (CERs).`
       },
       ucc: {
         title: 'UCC Work Orders (CERs)',
@@ -766,6 +771,7 @@
     const elSkip = document.getElementById('btn-skip');
     const elIntelList = document.getElementById('intel-list');
     const elIntelCount = document.getElementById('intel-count');
+    let currentChoices = [];
 
     elTyping.addEventListener('change', () => { state.typing = elTyping.checked; save(); });
     elAuto.addEventListener('change', () => { state.autoScroll = elAuto.checked; save(); });
@@ -776,10 +782,27 @@
     // Fast-forward current typing
     let currentTyper = null;
     elSkip.addEventListener('click', () => { if (currentTyper && typeof currentTyper.skip === 'function') currentTyper.skip(); });
+    elChoices.addEventListener('click', (event) => {
+      const btn = event.target.closest('button.choice');
+      if (!btn) return;
+      const idx = Number(btn.dataset.choiceIndex);
+      if (!Number.isInteger(idx)) return;
+      handleChoice(idx);
+    });
+    document.addEventListener('click', (event) => {
+      const btn = event.target.closest('#choices button.choice');
+      if (!btn) return;
+      const idx = Number(btn.dataset.choiceIndex);
+      if (!Number.isInteger(idx)) return;
+      event.preventDefault();
+      event.stopPropagation();
+      handleChoice(idx);
+    }, true);
 
     function clearViews() {
       elLog.innerHTML = '';
       elChoices.innerHTML = '';
+      currentChoices = [];
       renderIntel();
     }
 
@@ -862,20 +885,27 @@
       scrollBottom();
     }
 
+    function handleChoice(choiceOrIndex) {
+      const choice = typeof choiceOrIndex === 'number'
+        ? currentChoices[choiceOrIndex]
+        : choiceOrIndex;
+      if (!choice || typeof choice.next !== 'string' || !choice.next) return;
+      unlockIntel(choice.intel);
+      runScene(choice.next, { fromChoice: choice });
+    }
+
     // Render choices for a scene
     function renderChoices(scene) {
       elChoices.innerHTML = '';
-      (scene.choices || []).forEach((ch, idx) => {
+      currentChoices = (scene.choices || []).slice();
+      currentChoices.forEach((ch, idx) => {
         const btn = document.createElement('button');
         btn.className = 'choice rounded-md px-3 py-2 text-left';
         btn.textContent = ch.label;
         btn.setAttribute('type', 'button');
         btn.setAttribute('aria-label', ch.label);
-        btn.onclick = function() {
-          if (typeof ch.next === 'string' && ch.next) {
-            runScene(ch.next, { fromChoice: ch });
-          }
-        };
+        btn.dataset.choiceIndex = String(idx);
+        btn.addEventListener('click', () => handleChoice(idx));
         elChoices.appendChild(btn);
       });
     }
@@ -915,6 +945,7 @@
       // Clear the terminal area before displaying new response
       elLog.innerHTML = '';
       elChoices.innerHTML = '';
+      currentChoices = [];
 
       // Type this scene's text, then render choices
       typeBlock(scene.lines, () => { renderChoices(scene); });
@@ -941,12 +972,7 @@
       // Only allow 1-9 keys
       if (e.target.tagName === 'INPUT' || e.target.tagName === 'TEXTAREA') return;
       const n = parseInt(e.key, 10);
-      if (!isNaN(n) && n >= 1 && n <= 9) {
-        const btns = document.querySelectorAll('#choices button.choice');
-        if (btns[n - 1]) {
-          btns[n - 1].click();
-        }
-      }
+      if (!isNaN(n) && n >= 1 && n <= 9) handleChoice(n - 1);
     });
   </script>
 
